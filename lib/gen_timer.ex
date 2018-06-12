@@ -2,9 +2,14 @@ defmodule GenTimer do
   use GenServer
 
   def start(function, args, duration), do: start_repeated(function, args, duration, 1)
-  def start_repeated(function, args, duration, times \\ :infinite), do: GenServer.start(__MODULE__, %{function: function, args: args, duration: duration, times: times})
+  def start_repeated(function, args, duration, times \\ :infinite) do
+    GenServer.start(__MODULE__, %{function: function, args: args, duration: duration, times: times}, name: GenTimer)
+  end
+
   def start_link(function, args, duration), do: start_link_repeated(function, args, duration, 1)
-  def start_link_repeated(function, args, duration, times \\ :infinite), do: GenServer.start_link(__MODULE__, %{function: function, args: args, duration: duration, times: times})
+  def start_link_repeated(function, args, duration, times \\ :infinite) do
+    GenServer.start_link(__MODULE__, %{function: function, args: args, duration: duration, times: times}, name: GenTimer)
+  end
 
   def init(%{duration: duration, times: :infinite} = state) do
     schedule_work(:perform_and_reschedule, duration)
