@@ -86,12 +86,12 @@ defmodule GenTimer do
 
   ## Callbacks
 
-  defp init(%{duration: duration, times: :infinite} = state) do
+  def init(%{duration: duration, times: :infinite} = state) do
     schedule_work(:perform_and_reschedule, duration)
     {:ok, state}
   end
 
-  defp init(%{duration: duration} = state) do
+  def init(%{duration: duration} = state) do
     state =
       Map.update(state, :times, 0, fn times ->
         schedule_remaining(duration, times)
