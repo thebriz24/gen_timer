@@ -1,21 +1,19 @@
 # GenTimer
+[![Hex Version](https://img.shields.io/hexpm/v/gen_timer.svg "Hex Version")](https://hex.pm/packages/gen_timer)
 
-**TODO: Add description**
+A GenServer for asynchronously running a function after some duration.
 
 ## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `gen_timer` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:gen_timer, "~> 0.1.0"}
+    {:gen_timer, "~> 0.0.2"}
   ]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/gen_timer](https://hexdocs.pm/gen_timer).
+## Usage
 
+Register a function and a duration. The function will be called after the duration. If using `start_repeated/4` or
+`start_link_repeated/4` it will continue for the specified amount of times.
