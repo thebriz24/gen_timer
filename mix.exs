@@ -10,7 +10,8 @@ defmodule GenTimer.MixProject do
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      package: package()
+      package: package(),
+      docs: [main: GenTimer]
     ]
   end
 
