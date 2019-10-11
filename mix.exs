@@ -4,7 +4,7 @@ defmodule GenTimer.MixProject do
   def project do
     [
       app: :gen_timer,
-      version: "0.0.2",
+      version: "0.0.3",
       elixir: "~> 1.6",
       description: "A GenServer for asynchronously running a function after some duration.",
       build_embedded: Mix.env() == :prod,
