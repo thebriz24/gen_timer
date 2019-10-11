@@ -105,7 +105,7 @@ defmodule GenTimer do
 
   def handle_info(:perform, state) do
     {return, new_args} = apply(state.function, state.args)
-    new_state = state |> Map.put(:return, return) |> Map.put(:args, new_args)
+    new_state = state |> Map.put(:return, return) |> Map.put(:args, [new_args])
     {:stop, :normal, new_state}
   end
 
@@ -116,7 +116,7 @@ defmodule GenTimer do
       state
       |> Map.update(:times, 0, fn times -> schedule_remaining(state.milli, times) end)
       |> Map.put(:return, return)
-      |> Map.put(:args, new_args)
+      |> Map.put(:args, [new_args])
 
     {:noreply, new_state}
   end
