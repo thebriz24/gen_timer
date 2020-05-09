@@ -1,13 +1,31 @@
 defmodule GenTimer do
   @moduledoc """
-  Extends GenServer to give a timer functionality. The state given by 
-  `c:GenServer.init/1` must include the required keys shown in 
-  `t:valid_state/0`, but then you can add any other state you please.
+  Extends GenServer to give a timer functionality. 
+
+  There is a small folder of examples in this repo to guide you.
+
+  ## Callbacks
+  Supports the same callbacks as `GenServer`. The only considerations are:
+
+  ### There Is Required State For `init/1`
+  The state returned by `c:GenServer.init/1` must include the required keys shown 
+  in `t:valid_state/0`, but then you can add any other state you please.
+
+  ### Repeated Funtion Callback
   The callback `c:repeated_function/1` is where you choose what is done each 
   iteration. It will use the current state as the argument and will use the 
-  returned state as the state of the GenServer going forward. There is a small 
-  examples folder in this repo to guide you.
+  returned state as the state of the GenServer going forward. 
   """
+
+  @type valid_state :: %{milli: pos_integer, times: pos_integer | :infinite, last_return: any}
+
+  @doc """
+  This is where you choose what is done each iteration. 
+
+  It will use the current state as the argument and will use the returned state 
+  as the state of the GenServer going forward. 
+  """
+  @callback repeated_function(state :: valid_state) :: valid_state
 
   defmacro __using__(_args) do
     quote do
@@ -103,20 +121,40 @@ defmodule GenTimer do
   end
 
   @doc """
-  Use exactly the same as `GenServer.start_link/3`. 
-  """
-  @spec start_link(atom, any, Keyword.t) :: GenServer.on_start
-  def start_link(module, args, options) do
-    case GenServer.start_link(module, args, options) do
-      {:ok, pid} = return ->
-        Process.send(pid, :start_timer, [])
-        return
+  Use exactly the same as `GenServer.start_link/3`.
 
-      other ->
-        other
-    end
+  Only difference is that it will send a message to the process to start the timer.
+  """
+  @spec start_link(atom, any, GenServer.options()) :: GenServer.on_start()
+  def start_link(module, args, options) do
+    module
+    |> GenServer.start_link(args, options)
+    |> send_start_signal()
   end
 
-  @type valid_state :: %{milli: pos_integer, times: pos_integer | :infinite, last_return: any}
-  @callback repeated_function(state :: valid_state) :: valid_state
+  @doc """
+  Use exactly the same as `GenServer.start/3`. 
+
+  Only difference is that it will send a message to the process to start the timer.
+  """
+  @spec start(atom, any, GenServer.options()) :: GenServer.on_start()
+  def start(module, args, options) do
+    module
+    |> GenServer.start(args, options)
+    |> send_start_signal()
+  end
+
+  defdelegate abcast(nodes, name, request), to: GenServer
+  defdelegate call(server, request, timeout), to: GenServer
+  defdelegate cast(server, request), to: GenServer
+  defdelegate multi_call(nodes, name, request, timeout), to: GenServer
+  defdelegate reply(client, reply), to: GenServer
+  defdelegate stop(server, reason, timeout), to: GenServer
+
+  defp send_start_signal({:ok, pid} = result) do
+    Process.send(pid, :start_timer, [])
+    result
+  end
+
+  defp send_start_signal(other), do: other
 end
