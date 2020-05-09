@@ -4,8 +4,8 @@ defmodule GenTimer.MixProject do
   def project do
     [
       app: :gen_timer,
-      version: "0.0.3",
-      elixir: "~> 1.6",
+      version: "0.1.0",
+      elixir: "~> 1.10",
       description: "A GenServer for asynchronously running a function after some duration.",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
@@ -25,8 +25,8 @@ defmodule GenTimer.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:credo, "~> 0.9.3", only: [:dev, :test]},
-      {:ex_doc, "~> 0.18.3", only: [:dev]}
+      {:credo, "~> 1.4", only: [:dev, :test]},
+      {:ex_doc, "~> 0.21", only: [:dev]}
     ]
   end
 

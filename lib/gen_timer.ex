@@ -1,128 +1,110 @@
 defmodule GenTimer do
-  @moduledoc ~S"""
-  A GenServer for asynchronously running a function after some duration.
+  @moduledoc false
 
-  ## Usage
-  Register a function and a duration. The function will be called after the duration. If using `start_repeated/4` or
-  `start_link_repeated/4` it will continue for the specified amount of times.
-  """
-  use GenServer
+  defmacro __using__(_args) do
+    quote do
+      use GenServer, restart: :transient
+      @behaviour GenTimer
 
-  @doc """
-    Starts a `GenServer` process without links (outside of a supervision tree). The `function` is registered. After the
-    `milli` duration the function will be called using specified `args`.
-  """
-  @spec start((... -> {any(), new_state :: any()}), list(), non_neg_integer()) :: GenServer.on_start()
-  def start(function, args, milli), do: start_repeated(function, args, milli, 1)
+      @spec last_returned_value(pid()) :: any()
+      def last_returned_value(pid) do
+        GenServer.call(pid, :last_returned_value)
+      end
 
-  @doc """
-    The same as `start/3` but allows to specify an amount of `times` to repeat, defaulting to `:infinite`.
-  """
-  @spec start_repeated((... -> {any(), new_state :: any()}), list(), non_neg_integer(), non_neg_integer() | :infinite) ::
-          GenServer.on_start()
-  def start_repeated(function, args, milli, times \\ :infinite) do
-    GenServer.start(
-      __MODULE__,
-      %{function: function, args: args, milli: milli, times: times},
-      name: GenTimer
-    )
-  end
+      # Callbacks
 
-  @doc """
-    Starts a `GenServer` process linked to the current process. The `function` is registered. After the
-    `milli` duration the function will be called using specified `args`.
-  """
-  @spec start_link((... -> {any(), new_state :: any()}), list(), non_neg_integer()) :: GenServer.on_start()
-  def start_link(function, args, milli), do: start_link_repeated(function, args, milli, 1)
+      @impl true
+      def handle_info(:start_timer, state) do
+        new_state =
+          state
+          |> check_state()
+          |> Map.update(:times, 0, fn times -> schedule_remaining(state.milli, times) end)
 
-  @doc """
-    The same as `start_link/3` but allows to specify an amount of `times` to repeat, defaulting to `:infinite`.
-  """
-  @spec start_link_repeated(
-          (... -> {any(), new_state :: any()}),
-          list(),
-          non_neg_integer(),
-          non_neg_integer() | :infinite
-        ) :: GenServer.on_start()
-  def start_link_repeated(function, args, milli, times \\ :infinite) do
-    GenServer.start_link(
-      __MODULE__,
-      %{function: function, args: args, milli: milli, times: times},
-      name: GenTimer
-    )
-  end
+        {:noreply, new_state}
+      end
 
-  @doc """
-    Synchronously calls the `GenServer` at `pid` to receive the last value returned by the registered function. All previous
-    returned values will not be kept.
-  """
-  @spec last_returned_value(pid()) :: any()
-  def last_returned_value(pid) do
-    GenServer.call(pid, :last_returned_value)
-  end
+      def handle_info(:perform, state) do
+        new_state = repeated_function(state)
+        {:stop, :normal, new_state}
+      end
 
-  defp schedule_work(:perform, milli) do
-    Process.send_after(self(), :perform, milli)
-  end
+      def handle_info(:perform_and_reschedule, state) do
+        new_state =
+          state
+          |> repeated_function()
+          |> Map.update(:times, 0, fn times -> schedule_remaining(state.milli, times) end)
 
-  defp schedule_work(:perform_and_reschedule, milli) do
-    Process.send_after(self(), :perform_and_reschedule, milli)
-  end
+        {:noreply, new_state}
+      end
 
-  defp schedule_remaining(milli, :infinite) do
-    schedule_work(:perform_and_reschedule, milli)
-    :infinite
-  end
+      @impl true
+      def handle_call(:last_returned_value, _from, state) do
+        return = Map.get(state, :last_return)
+        {:reply, return, state}
+      end
 
-  defp schedule_remaining(milli, times) do
-    if times > 1 do
-      schedule_work(:perform_and_reschedule, milli)
-    else
-      schedule_work(:perform, milli)
+      # Private
+      defp check_state(state) do
+        state |> check_keys() |> check_values()
+      end
+
+      defp check_keys(state) do
+        cond do
+          not Map.has_key?(state, :milli) -> raise GenTimer.RequiredKeyError, :milli
+          not Map.has_key?(state, :times) -> raise GenTimer.RequiredKeyError, :times
+          not Map.has_key?(state, :last_return) -> Map.put(state, :last_return, nil)
+          true -> state
+        end
+      end
+
+      defp check_values(%{milli: milli}) when not is_integer(milli) or milli < 1 do
+        raise GenTimer.InvalidDurationError, milli
+      end
+
+      defp check_values(%{times: times} = state) do
+        case times do
+          :infinite -> :ok
+          num when is_integer(num) and num > 0 -> :ok
+          other -> raise GenTimer.InvalidRepetitionError, other
+        end
+
+        state |> Map.delete(:times) |> check_values() |> Map.put(:times, times)
+      end
+
+      defp check_values(state), do: state
+
+      defp schedule_work(job, milli) do
+        Process.send_after(self(), job, milli)
+      end
+
+      defp schedule_remaining(milli, :infinite) do
+        schedule_work(:perform_and_reschedule, milli)
+        :infinite
+      end
+
+      defp schedule_remaining(milli, times) do
+        cond do
+          times > 1 -> schedule_work(:perform_and_reschedule, milli)
+          times == 1 -> schedule_work(:perform, milli)
+          true -> :ok
+        end
+
+        times - 1
+      end
     end
-
-    times - 1
   end
 
-  ## Callbacks
+  def start_link(module, args, options) do
+    case GenServer.start_link(module, args, options) do
+      {:ok, pid} = return ->
+        Process.send(pid, :start_timer, [])
+        return
 
-  @doc """
-    Imported by `GenServer.__using__/1`
-  """
-  def init(%{milli: milli, times: :infinite} = state) do
-    schedule_work(:perform_and_reschedule, milli)
-    {:ok, state}
+      other ->
+        other
+    end
   end
 
-  def init(%{milli: milli} = state) do
-    state =
-      Map.update(state, :times, 0, fn times ->
-        schedule_remaining(milli, times)
-      end)
-
-    {:ok, state}
-  end
-
-  def handle_info(:perform, state) do
-    {return, new_args} = apply(state.function, state.args)
-    new_state = state |> Map.put(:return, return) |> Map.put(:args, [new_args])
-    {:stop, :normal, new_state}
-  end
-
-  def handle_info(:perform_and_reschedule, state) do
-    {return, new_args} = apply(state.function, state.args)
-
-    new_state =
-      state
-      |> Map.update(:times, 0, fn times -> schedule_remaining(state.milli, times) end)
-      |> Map.put(:return, return)
-      |> Map.put(:args, [new_args])
-
-    {:noreply, new_state}
-  end
-
-  def handle_call(:last_returned_value, _from, state) do
-    return = Map.get(state, :return)
-    {:reply, return, state}
-  end
+  @type valid_state :: %{milli: pos_integer, times: pos_integer | :infinite, last_return: any}
+  @callback repeated_function(state :: valid_state) :: valid_state
 end
