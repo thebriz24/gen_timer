@@ -1,5 +1,13 @@
 defmodule GenTimer do
-  @moduledoc false
+  @moduledoc """
+  Extends GenServer to give a timer functionality. The state given by 
+  `c:GenServer.init/1` must include the required keys shown in 
+  `t:valid_state/0`, but then you can add any other state you please.
+  The callback `c:repeated_function/1` is where you choose what is done each 
+  iteration. It will use the current state as the argument and will use the 
+  returned state as the state of the GenServer going forward. There is a small 
+  examples folder in this repo to guide you.
+  """
 
   defmacro __using__(_args) do
     quote do
@@ -94,6 +102,7 @@ defmodule GenTimer do
     end
   end
 
+  @doc false
   def start_link(module, args, options) do
     case GenServer.start_link(module, args, options) do
       {:ok, pid} = return ->

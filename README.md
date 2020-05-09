@@ -8,12 +8,11 @@ A GenServer for asynchronously running a function after some duration.
 ```elixir
 def deps do
   [
-    {:gen_timer, "~> 0.0.2"}
+    {:gen_timer, "~> 1.0"}
   ]
 end
 ```
 
 ## Usage
 
-Register a function and a duration. The function will be called after the duration. If using `start_repeated/4` or
-`start_link_repeated/4` it will continue for the specified amount of times.
+Follows the same pattern as the GenServer behaviour. See the examples for... well... examples... I good at the communications.
