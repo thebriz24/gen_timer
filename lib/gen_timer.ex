@@ -102,7 +102,10 @@ defmodule GenTimer do
     end
   end
 
-  @doc false
+  @doc """
+  Use exactly the same as `GenServer.start_link/3`. 
+  """
+  @spec start_link(atom, any, Keyword.t) :: GenServer.on_start
   def start_link(module, args, options) do
     case GenServer.start_link(module, args, options) do
       {:ok, pid} = return ->
